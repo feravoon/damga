@@ -105,8 +105,10 @@ GbCPU::GbCPU()
 
 int GbCPU::processInstruction() // Main method for processing an instruction (sould be called repeatedly in a loop)
 {
-	uint8_t opcode = memory[PC]; // Opcode is read from memory location indicated by PC
+	uint16_t opcode = memory[PC]; // Opcode is read from memory location indicated by PC
 	uint8_t opcode1, opcode2; // Two bytes are defined for two instruction operands
+
+	int cycleCount = cycles[opcode];
 
 	// Instruction uint8_t length
 	int byteLength = byteLengths[opcode];
@@ -122,6 +124,10 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		// If instruction is longer than 2 bytes, take further next uint8_t as second operand
 		opcode2 = memory[PC + 2];
 	}
+
+	if(opcode==0xcb)
+		opcode = (opcode1 << 8) | opcode;
+
 
 	PC += byteLength; // Advance the PC by the uint8_t length of current instruction
 
@@ -741,6 +747,10 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0xe9: PC = ((H << 8) | L); break; // PCHL
 	case 0xf9: SP = ((H << 8) | L); break; // SPHL
 
+	// Extended Opcodes
+
+
+
 	default:
 		printf("\t\tUnimplemented instruction:");
 		PC -= byteLength; // Decrement PC by 1 for disassembly code to work on the right instruction
@@ -763,7 +773,7 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		printf("A $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x\n", A, B, C, D, E, H, L, SP);
 	}
 
-	return cycles[opcode]; // return the number of cycles for cycle counting
+	return cycleCount; // return the number of cycles for cycle counting
 }
 
 int GbCPU::disassemble_GbCPU_Op()
