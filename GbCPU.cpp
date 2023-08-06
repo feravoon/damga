@@ -21,16 +21,15 @@ void GbCPU::setHL(uint16_t HL) { H = HL >> 8; L = HL & 0x00ff; }
 
 uint8_t GbCPU::getFlags()
 {
-	return ((S ? 1 : 0) << 7) | ((Z ? 1 : 0) << 6) | ((AC ? 1 : 0) << 4) | ((P ? 1 : 0) << 2) | (CY ? 1 : 0) | 0x02;
+	return ((Z ? 1 : 0) << 7) | ((N ? 1 : 0) << 6) | ((HC ? 1 : 0) << 5) | ((CY ? 1 : 0) << 4);
 }
 
 void GbCPU::setFlags(uint8_t value)
 {
-	S = (value & 0x80) == 0x80;
-	Z = (value & 0x40) == 0x40;
-	AC = (value & 0x10) == 0x10;
-	P = (value & 0x02) == 0x02;
-	CY = (value & 0x01) == 0x01;
+	Z = (value & 0x80) == 0x80;
+	N = (value & 0x40) == 0x40;
+	HC = (value & 0x10) == 0x20;
+	CY = (value & 0x02) == 0x10;
 }
 
 bool GbCPU::parity(int x, int size)
@@ -48,26 +47,29 @@ bool GbCPU::parity(int x, int size)
 
 void GbCPU::updateFlagsArithmetic(int res)
 {
-	AC = false;
+	HC = false;
 	CY = (res > 0xff);
 	Z = ((res & 0xff) == 0);
-	S = (0x80 == (res & 0x80));
-	P = parity(res & 0xff, 8);
+	N = false;
+}
+
+void GbCPU::updateFlagsArithmetic_sub(int res)
+{
+	HC = false;
+	CY = (res > 0xff);
+	Z = ((res & 0xff) == 0);
+	N = true;
 }
 
 void GbCPU::updateFlagsLogic()
 {
 	CY = false;
 	Z = (A == 0);
-	S = (0x80 == (A & 0x80));
-	P = parity(A, 8);
 }
 
-void GbCPU::updateFlagsZSP(uint8_t val)
+void GbCPU::updateFlagZ(uint8_t val)
 {
 	Z = (val == 0);
-	S = (0x80 == (val & 0x80));
-	P = parity(val, 8);
 }
 
 void GbCPU::generateInterrupt(int intID)
@@ -79,7 +81,14 @@ void GbCPU::generateInterrupt(int intID)
 	PC = (uint16_t)(8 * intID);
 	IE = false;
 }
-			
+
+uint8_t GbCPU::rotateLeft(uint8_t value)
+{	
+	uint8_t res = ((CY ? 1 : 0) | (value << 1));
+	CY = (0x80 == (value & 0x80));
+	return res;
+}
+
 GbCPU::GbCPU()
 {
 	A = 0;
@@ -93,10 +102,10 @@ GbCPU::GbCPU()
 	SP = 0;
 
 	Z = false;
-	S = false;
-	P = false;
+	N = false;
+	HC = false;
 	CY = false;
-	AC = false;
+	
 	IE = true;
 
 	memory = Memory();
@@ -218,7 +227,7 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0x39: { int res = getHL() + SP; setHL(res); CY = (res & 0xffff0000) != 0; }; break; // DAD SP
 
 	case 0x27: // DAA
-		if (((A & 0xf) > 9) | AC)
+		if (((A & 0xf) > 9) | HC)
 			A += 6;
 		if (((A & 0xf0) > 0x90) | CY)
 		{
@@ -342,7 +351,7 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 
 	// ADD
 	// AC (Auxiliary Carry flag) was not implemented at first. But, I added it, only at the row below, to make the coin count logic work.
-	case 0x80: { int res = A + B; updateFlagsArithmetic(res); AC = ((A & 0x0f)+(B & 0x0f) > 0x0f); A = (res & 0xff); } break; // ADD B
+	case 0x80: { int res = A + B; updateFlagsArithmetic(res); HC = ((A & 0x0f)+(B & 0x0f) > 0x0f); A = (res & 0xff); } break; // ADD B
 	case 0x81: { int res = A + C; updateFlagsArithmetic(res); A = (res & 0xff); } break; // ADD C
 	case 0x82: { int res = A + D; updateFlagsArithmetic(res); A = (res & 0xff); } break; // ADD D
 	case 0x83: { int res = A + E; updateFlagsArithmetic(res); A = (res & 0xff); } break; // ADD E
@@ -769,7 +778,7 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		printf("%c", S ? 'S' : '.');
 		printf("%c", P ? 'P' : '.');
 		printf("%c", CY ? 'C' : '.');
-		printf("%c  ", AC ? 'A' : '.');
+		printf("%c  ", HC ? 'A' : '.');
 		printf("A $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x\n", A, B, C, D, E, H, L, SP);
 	}
 

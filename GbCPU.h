@@ -7,7 +7,7 @@ class GbCPU
 private:
 	uint8_t A, B, C, D, E, H, L;
 	uint16_t SP;
-	bool Z, S, P, CY, AC;
+	bool Z, N, HC, CY;
 	uint8_t getM();
 	void setM(uint8_t value);
 	uint16_t getBC(), getDE(), getHL();
@@ -15,10 +15,11 @@ private:
 	uint8_t getFlags();
 	void setFlags(uint8_t value);
 	void updateFlagsArithmetic(int res);
-	void updateFlagsLogic();
-	void updateFlagsZSP(uint8_t val);
+    void updateFlagsArithmetic_sub(int res);
+    void updateFlagsLogic();
+    void updateFlagZ(uint8_t val);
 	static bool parity(int x, int size);
-	
+	uint8_t rotateLeft(uint8_t value);
 
 public:
 	bool printOutput;
@@ -31,7 +32,9 @@ public:
 	int disassemble_GbCPU_Op();
 	void generateInterrupt(int intID);
 
-	const int cycles[256] = {
+    
+
+    const int cycles[256] = {
 				4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4, //0x00..0x0f
 				4, 10, 7, 5, 5, 5, 7, 4, 4, 10, 7, 5, 5, 5, 7, 4,
 				4, 10, 16, 5, 5, 5, 7, 4, 4, 10, 16, 5, 5, 5, 7, 4,
@@ -51,7 +54,7 @@ public:
 				11, 10, 10, 10, 17, 11, 7, 11, 11, 10, 10, 10, 10, 17, 7, 11,
 				11, 10, 10, 18, 17, 11, 7, 11, 11, 5, 10, 5, 17, 17, 7, 11,
 				11, 10, 10, 4, 17, 11, 7, 11, 11, 5, 10, 4, 17, 17, 7, 11,
-				}; // Cycle lengths for each opcode
+				}; // Cycle lengths for eHCh opcode
 
 	const int byteLengths[256] = {
 				1, 3, 1, 1, 1, 1, 2, 1, 3, 1, 1, 1, 1, 1, 2, 1, //0x00..0x0f
@@ -73,7 +76,7 @@ public:
 				1, 1, 3, 1, 3, 1, 2, 1, 1, 1, 3, 1, 3, 1, 2, 1,
 				2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 3, 1, 1, 1, 2, 1,
 				2, 1, 2, 1, 1, 1, 2, 1, 2, 1, 3, 1, 1, 1, 2, 1,
-				}; // Instruction byte lengths for each opcode 
+				}; // Instruction byte lengths for eHCh opcode 
 
 	const char *ops[256] = {
     [0x00] = "NOP",
