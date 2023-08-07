@@ -17,9 +17,28 @@ private:
 	void updateFlagsArithmetic(int res);
     void updateFlagsArithmetic_sub(int res);
     void updateFlagsLogic();
+    void updateFlagsLogic_setHC();
     void updateFlagZ(uint8_t val);
-	static bool parity(int x, int size);
-	uint8_t rotateLeft(uint8_t value);
+    enum FlagState{
+	    RESET,
+	    SET,
+	    UNCHANGED,
+	    AFFECTED
+    };
+    void updateFlags(GbCPU::FlagState stZ, GbCPU::FlagState stN, GbCPU::FlagState stHC, GbCPU::FlagState stCY, u_int16_t res, uint8_t operand1, uint8_t operand2);
+    void updateFlagCY(uint16_t res);
+    void updateFlagHC(uint16_t res, GbCPU::FlagState stN, uint8_t operand1, uint8_t operand2);
+    static bool parity(int x, int size);
+    uint8_t rotateLeft(uint8_t value);
+    uint8_t rotateLeftCircular(uint8_t value);
+    uint8_t rotateRight(uint8_t value);
+    uint8_t rotateRightCircular(uint8_t value);
+    uint8_t shiftLeftArithmetic(uint8_t value);
+    uint8_t shiftRightArithmetic(uint8_t value);
+    uint8_t shiftRightLogical(uint8_t value);
+    void bitTest(uint8_t bitNumber, uint8_t value);
+    uint8_t bitReset(uint8_t bitNumber, uint8_t value);
+    void processExtendedInstruction(uint8_t opcode);
 
 public:
 	bool printOutput;
@@ -27,10 +46,12 @@ public:
 	bool IE;
 	Memory memory;
 	IOcontroller IO;
-	GbCPU();
-	int processInstruction();
+    
+    GbCPU();
+    int processInstruction();
 	int disassemble_GbCPU_Op();
 	void generateInterrupt(int intID);
+    
 
     
 

@@ -32,6 +32,69 @@ void GbCPU::setFlags(uint8_t value)
 	CY = (value & 0x02) == 0x10;
 }
 
+
+
+void GbCPU::updateFlags(GbCPU::FlagState stZ, GbCPU::FlagState stN, GbCPU::FlagState stHC, GbCPU::FlagState stCY, u_int16_t res, uint8_t operand1, uint8_t operand2)
+{
+	switch (stZ)
+	{
+	case RESET:
+		Z = false; break;
+	case SET:
+		Z = true; break;
+	case UNCHANGED:
+		break;
+	case AFFECTED:
+		updateFlagZ(res & 0xff);
+	}
+
+	switch (stN)
+	{
+	case RESET:
+		N = false; break;
+	case SET:
+		N = true; break;
+	case UNCHANGED:
+	case AFFECTED:
+		break;
+	}
+
+	switch (stHC)
+	{
+	case RESET:
+		HC = false; break;
+	case SET:
+		HC = true; break;
+	case UNCHANGED:
+		break;
+	case AFFECTED:
+		updateFlagHC(res, stN, operand1, operand2);
+	}
+
+	switch (stCY)
+	{
+	case RESET:
+		CY = false; break;
+	case SET:
+		CY = true; break;
+	case UNCHANGED:
+		break;
+	case AFFECTED:
+		updateFlagCY(res);
+	}
+}
+
+void GbCPU::updateFlagCY(uint16_t res)
+{
+	CY = (res > 0xff);
+}
+
+void GbCPU::updateFlagHC(uint16_t res, GbCPU::FlagState stN, uint8_t operand1, uint8_t operand2)
+{
+	// ??? HC = ((operand1 & 0x0f)+(operand2 & 0x0f)) & 0x10 == 0x10; 
+	HC = ((operand1 & 0x0f)+(operand2 & 0x0f) > 0x0f);
+}
+
 bool GbCPU::parity(int x, int size)
 {
 	int i;
@@ -64,6 +127,16 @@ void GbCPU::updateFlagsArithmetic_sub(int res)
 void GbCPU::updateFlagsLogic()
 {
 	CY = false;
+	HC = false;
+	N = false;
+	Z = (A == 0);
+}
+
+void GbCPU::updateFlagsLogic_setHC()
+{
+	CY = false;
+	HC = true;
+	N = false;
 	Z = (A == 0);
 }
 
@@ -86,8 +159,70 @@ uint8_t GbCPU::rotateLeft(uint8_t value)
 {	
 	uint8_t res = ((CY ? 1 : 0) | (value << 1));
 	CY = (0x80 == (value & 0x80));
+	Z = res==0;
 	return res;
 }
+
+uint8_t GbCPU::rotateLeftCircular(uint8_t value)
+{	
+	uint8_t res = ((value>>7) | (value << 1));
+	CY = (0x80 == (value & 0x80));
+	Z = res==0;
+	return res;
+}
+
+uint8_t GbCPU::rotateRight(uint8_t value)
+{	
+	uint8_t res = (((CY ? 1 : 0) << 7) | (value >> 1));
+	CY = (0x01 == (value & 0x01));
+	Z = res==0;
+	return res;
+}
+
+uint8_t GbCPU::rotateRightCircular(uint8_t value)
+{	
+	uint8_t res = ((value << 7) | (value >> 1));
+	CY = (0x01 == (value & 0x01));
+	Z = res==0;
+	return res;
+}
+
+uint8_t GbCPU::shiftLeftArithmetic(uint8_t value)
+{	
+	uint8_t res = (value << 1);
+	CY = (0x80 == (value & 0x80));
+	Z = res==0;
+	return res;
+}
+
+uint8_t GbCPU::shiftRightArithmetic(uint8_t value)
+{	
+	uint8_t res = ((value & 0x80) | (value >> 1));
+	CY = (0x01 == (value & 0x01));
+	Z = res==0;
+	return res;
+}
+
+uint8_t GbCPU::shiftRightLogical(uint8_t value)
+{	
+	uint8_t res = (value >> 1);
+	CY = (0x01 == (value & 0x01));
+	Z = res==0;
+	return res;
+}
+
+void GbCPU::bitTest(uint8_t bitNumber, uint8_t value)
+{
+	Z = ((value >> bitNumber) & 0x01 == 0);
+	N = 0;
+	HC = 1;
+}
+
+uint8_t GbCPU::bitReset(uint8_t bitNumber, uint8_t value)
+{
+	return (~(uint8_t(0x01)<<bitNumber)); //TODO bitmedi buuuu
+}
+
 
 GbCPU::GbCPU()
 {
@@ -134,14 +269,15 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		opcode2 = memory[PC + 2];
 	}
 
-	if(opcode==0xcb)
-		opcode = (opcode1 << 8) | opcode;
+	//if(opcode==0xcb)
+	//	opcode = (opcode1 << 8) | opcode;
 
 
 	PC += byteLength; // Advance the PC by the uint8_t length of current instruction
 
 	switch (opcode)
 	{
+	case 0xcb: processExtendedInstruction(opcode1); break;	
 	case 0x00: // NOP
 	case 0x10:
 	case 0x20:
@@ -238,24 +374,24 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		break;
 
 	// INR
-	case 0x04: B++; updateFlagsZSP(B); break; // INR B
-	case 0x0c: C++; updateFlagsZSP(C); break; // INR C
-	case 0x14: D++; updateFlagsZSP(D); break; // INR D
-	case 0x1c: E++; updateFlagsZSP(E); break; // INR E
-	case 0x24: H++; updateFlagsZSP(H); break; // INR H
-	case 0x2c: L++; updateFlagsZSP(L); break; // INR L
-	case 0x34: setM(getM()+1); updateFlagsZSP(getM()); break; // INR M
-	case 0x3c: A++; updateFlagsZSP(A); break; // INR A
+	case 0x04: B++; updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,B,B,0); // INR B
+	case 0x0c: C++; updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,C,C,0); break; // INR C
+	case 0x14: D++; updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,D,D,0); break; // INR D
+	case 0x1c: E++; updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,E,E,0); break; // INR E
+	case 0x24: H++; updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,H,H,0); break; // INR H
+	case 0x2c: L++; updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,L,L,0); break; // INR L
+	case 0x34: setM(getM()+1); updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,getM(),getM(),0); break; // INR M
+	case 0x3c: A++; updateFlags(AFFECTED,RESET,AFFECTED,UNCHANGED,A,A,0); break; // INR A
 
 	// DCR
-	case 0x05: B--; updateFlagsZSP(B); break; // DCR B
-	case 0x0d: C--; updateFlagsZSP(C); break; // DCR C
-	case 0x15: D--; updateFlagsZSP(D); break; // DCR D
-	case 0x1d: E--; updateFlagsZSP(E); break; // DCR E
-	case 0x25: H--; updateFlagsZSP(H); break; // DCR H
-	case 0x2d: L--; updateFlagsZSP(L); break; // DCR L
-	case 0x35: setM(getM() - 1); updateFlagsZSP(getM()); break; // DCR M
-	case 0x3d: A--; updateFlagsZSP(A); break; // DCR A
+	case 0x05: B--; updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,B,B,0); break; // DCR B
+	case 0x0d: C--; updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,C,C,0); break; // DCR C
+	case 0x15: D--; updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,D,D,0); break; // DCR D
+	case 0x1d: E--; updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,E,E,0); break; // DCR E
+	case 0x25: H--; updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,H,H,0); break; // DCR H
+	case 0x2d: L--; updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,L,L,0); break; // DCR L
+	case 0x35: setM(getM() - 1); updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,getM(),getM(),0); break; // DCR M
+	case 0x3d: A--; updateFlags(AFFECTED,SET,AFFECTED,UNCHANGED,A,A,0); break; // DCR A
 
 	// INX
 	case 0x03: setBC(getBC() + 1); break; // INX B
@@ -391,14 +527,14 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0x9f: { uint16_t res = (A - A - (CY ? 1 : 0)); updateFlagsArithmetic(res); A = (res & 0xff); } break; // SBB A
 
 	// ANA
-	case 0xa0: A &= B; updateFlagsLogic(); break; // ANA B
-	case 0xa1: A &= C; updateFlagsLogic(); break; // ANA C
-	case 0xa2: A &= D; updateFlagsLogic(); break; // ANA D
-	case 0xa3: A &= E; updateFlagsLogic(); break; // ANA E
-	case 0xa4: A &= H; updateFlagsLogic(); break; // ANA H
-	case 0xa5: A &= L; updateFlagsLogic(); break; // ANA L
-	case 0xa6: A &= getM(); updateFlagsLogic(); break; // ANA M
-	case 0xa7: A &= A; updateFlagsLogic(); break; // ANA A
+	case 0xa0: A &= B; updateFlagsLogic_setHC(); break; // ANA B
+	case 0xa1: A &= C; updateFlagsLogic_setHC(); break; // ANA C
+	case 0xa2: A &= D; updateFlagsLogic_setHC(); break; // ANA D
+	case 0xa3: A &= E; updateFlagsLogic_setHC(); break; // ANA E
+	case 0xa4: A &= H; updateFlagsLogic_setHC(); break; // ANA H
+	case 0xa5: A &= L; updateFlagsLogic_setHC(); break; // ANA L
+	case 0xa6: A &= getM(); updateFlagsLogic_setHC(); break; // ANA M
+	case 0xa7: A &= A; updateFlagsLogic_setHC(); break; // ANA A
 
 	// XRA
 	case 0xa8: A ^= B; updateFlagsLogic(); break; // XRA B
@@ -431,24 +567,24 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0xbf: { uint16_t res = (A - A); updateFlagsArithmetic(res); } break; // CMP A
 
 	case 0xc6: { int res = A + opcode1; updateFlagsArithmetic(res); A = (res & 0xff); } break; // ADI 
-	case 0xd6: { uint16_t res = (A - opcode1); updateFlagsZSP((res & 0xff)); CY = res > 0xff; A = (res & 0xff); } break; // SUI
+	case 0xd6: { uint16_t res = (A - opcode1); updateFlagsArithmetic_sub(res); A = (res & 0xff); } break; // SUI
 	case 0xe6: A &= opcode1; updateFlagsLogic(); break; // ANI
 	case 0xf6: A |= opcode1; updateFlagsLogic(); break; // ORI
 
 	case 0xce: { int res = A + opcode1 + (CY ? 1 : 0); updateFlagsArithmetic(res); A = (res & 0xff); } break; // ACI
-	case 0xde: { uint16_t res = (A - opcode1 - (CY ? 1 : 0)); updateFlagsZSP((res & 0xff)); CY = res > 0xff; A = (res & 0xff); } break; // SBI
+	case 0xde: { uint16_t res = (A - opcode1 - (CY ? 1 : 0)); updateFlagsArithmetic_sub(res); A = (res & 0xff); } break; // SBI
 	case 0xee: A ^= opcode1; updateFlagsLogic(); break; // XRI
-	case 0xfe: { uint8_t res = (A - opcode1); updateFlagsZSP(res); CY = A < opcode1; } break; // CPI
+	case 0xfe: { uint8_t res = (A - opcode1); updateFlagsArithmetic_sub(res); CY = A < opcode1; } break; // CPI
 
 	case 0xc3: PC = ((opcode2 << 8) | opcode1); break; // JMP adr
 	case 0xc2: if (!Z) { PC = ((opcode2 << 8) | opcode1); } break; // JNZ adr
 	case 0xca: if (Z) { PC = ((opcode2 << 8) | opcode1); } break; // JZ adr
 	case 0xd2: if (!CY) { PC = ((opcode2 << 8) | opcode1); } break; // JNC adr
 	case 0xda: if (CY) { PC = ((opcode2 << 8) | opcode1); } break; // JC adr
-	case 0xe2: if (!P) { PC = ((opcode2 << 8) | opcode1); } break; // JPO adr
-	case 0xea: if (P) { PC = ((opcode2 << 8) | opcode1); } break; // JPE adr
-	case 0xf2: if (!S) { PC = ((opcode2 << 8) | opcode1); } break; // JP adr
-	case 0xfa: if (S) { PC = ((opcode2 << 8) | opcode1); } break; // JM adr
+	case 0xe2: memory.write(0xff00 + C, A); break; // LD [C], A
+	case 0xea: memory.write((opcode2 << 8) | opcode1, A); break; // LD [a16], A
+	case 0xf2: A = memory.read(0xff00 + C); break; // LD A, [C] 
+	case 0xfa: A = memory.read((opcode2 << 8) | opcode1); break; // LD A, [a16]
 
 	case 0xc7: // RST 0
 	{
@@ -569,36 +705,29 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		}
 		break;
 
-	case 0xe8: // RPE
-		if (P)
+	case 0xe8: // ADD SP, e8
 		{
-			PC = (memory[SP] | (memory[SP + 1] << 8));
-			SP += 2;
+		uint16_t res = SP + (int8_t)opcode1;
+		updateFlags(RESET, RESET, AFFECTED, AFFECTED, res, SP, (int8_t)opcode1);
+		SP = res;
 		}
 		break;
 
-	case 0xe0: // RPO
-		if (!P)
+	case 0xe0: //LDH [a8], A
+		memory.write(0xff00 + opcode1, A); 
+		break;
+
+	case 0xf8: // LD HL, SP + e8
 		{
-			PC = (memory[SP] | (memory[SP + 1] << 8));
-			SP += 2;
+	    uint16_t res =  SP + (int8_t)opcode1;
+		setHL(res);
+		updateFlags(RESET, RESET, AFFECTED, AFFECTED, res, SP, (int8_t)opcode1);
+		SP = res;
 		}
 		break;
 
-	case 0xf8: // RM
-		if (S)
-		{
-			PC = (memory[SP] | (memory[SP + 1] << 8));
-			SP += 2;
-		}
-		break;
-
-	case 0xf0: // RP
-		if (!S)
-		{
-			PC = (memory[SP] | (memory[SP + 1] << 8));
-			SP += 2;
-		}
+	case 0xf0: // LDH A, [a8]
+		A = memory.read(0xff00 + opcode1);
 		break;
 
 	case 0xcd: // CALL adr
@@ -681,47 +810,15 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		break;
 
 	case 0xe4: // CPO
-		if (!P)
-		{
-			uint16_t ret = PC;
-			memory[SP - 1] = ((ret >> 8) & 0xff);
-			memory[SP - 2] = (ret & 0xff);
-			SP -= 2;
-			PC = ((opcode2 << 8) | opcode1);
-		}
 		break;
 
 	case 0xec: // CPE
-		if (P)
-		{
-			uint16_t ret = PC;
-			memory[SP - 1] = ((ret >> 8) & 0xff);
-			memory[SP - 2] = (ret & 0xff);
-			SP -= 2;
-			PC = ((opcode2 << 8) | opcode1);
-		}
 		break;
 
 	case 0xf4: // CP
-		if (!S)
-		{
-			uint16_t ret = PC;
-			memory[SP - 1] = ((ret >> 8) & 0xff);
-			memory[SP - 2] = (ret & 0xff);
-			SP -= 2;
-			PC = ((opcode2 << 8) | opcode1);
-		}
 		break;
 
 	case 0xfc: // CM
-		if (S)
-		{
-			uint16_t ret = PC;
-			memory[SP - 1] = ((ret >> 8) & 0xff);
-			memory[SP - 2] = (ret & 0xff);
-			SP -= 2;
-			PC = ((opcode2 << 8) | opcode1);
-		}
 		break;
 
 	case 0xc5: memory[SP - 1] = B; memory[SP - 2] = C; SP -= 2; break; // PUSH B
@@ -756,9 +853,6 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0xe9: PC = ((H << 8) | L); break; // PCHL
 	case 0xf9: SP = ((H << 8) | L); break; // SPHL
 
-	// Extended Opcodes
-
-
 
 	default:
 		printf("\t\tUnimplemented instruction:");
@@ -775,14 +869,18 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	{
 		printf("\t\t");
 		printf("%c", Z ? 'Z' : '.');
-		printf("%c", S ? 'S' : '.');
-		printf("%c", P ? 'P' : '.');
+		printf("%c", N ? 'N' : '.');
+		printf("%c", HC ? 'H' : '.');
 		printf("%c", CY ? 'C' : '.');
-		printf("%c  ", HC ? 'A' : '.');
-		printf("A $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x\n", A, B, C, D, E, H, L, SP);
+		printf("\tA $%02x B $%02x C $%02x D $%02x E $%02x H $%02x L $%02x SP %04x\n", A, B, C, D, E, H, L, SP);
 	}
 
 	return cycleCount; // return the number of cycles for cycle counting
+}
+
+void GbCPU::processExtendedInstruction(uint8_t opcode)
+{
+	return;
 }
 
 int GbCPU::disassemble_GbCPU_Op()
@@ -804,18 +902,33 @@ int GbCPU::disassemble_GbCPU_Op()
 	}
 
 	printf("%04x ", PC);
+
+	char instStr[24] = "               ";
+	char tempStr[24];
+
 	switch (opbytes)
 	{
 		case 1:
-			printf("%s", opString); break;
+			snprintf(tempStr, 23, "%s", opString); break;
 		case 2:
-			printf(opString, code1); break;
+			snprintf(tempStr, 23, opString, code1); break;
 		case 3:
-			printf(opString, code2, code1); break;
+			snprintf(tempStr, 23, opString, code2, code1); break;
 	}
 	
-	if(opbytes==1)
-		printf("\t");
+	int i = 0;
+	char curChar = tempStr[i];
+	while(curChar != '\0')
+	{
+		instStr[i] = curChar;
+		i++;
+		curChar = tempStr[i];
+	}
+
+	printf("%s", instStr);
+
+	//if(opbytes==1)
+	//	printf("\t");
 
 	if(code == 0xcb)
 		opbytes = byteLengths[code];
