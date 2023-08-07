@@ -38,6 +38,8 @@ private:
     uint8_t shiftRightLogical(uint8_t value);
     void bitTest(uint8_t bitNumber, uint8_t value);
     uint8_t bitReset(uint8_t bitNumber, uint8_t value);
+    uint8_t bitSet(uint8_t bitNumber, uint8_t value);
+    uint8_t swap(uint8_t value);
     void processExtendedInstruction(uint8_t opcode);
 
 public:

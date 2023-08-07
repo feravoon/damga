@@ -220,9 +220,19 @@ void GbCPU::bitTest(uint8_t bitNumber, uint8_t value)
 
 uint8_t GbCPU::bitReset(uint8_t bitNumber, uint8_t value)
 {
-	return (~(uint8_t(0x01)<<bitNumber)); //TODO bitmedi buuuu
+	return (~(uint8_t(0x01)<<bitNumber) & value);
 }
 
+uint8_t GbCPU::bitSet(uint8_t bitNumber, uint8_t value)
+{
+	return ((uint8_t(0x01)<<bitNumber) | value);
+}
+
+uint8_t GbCPU::swap(uint8_t value)
+{
+	Z = (value == 0x00);
+	return ((value << 4) | (value >> 4));
+}
 
 GbCPU::GbCPU()
 {
@@ -880,6 +890,330 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 
 void GbCPU::processExtendedInstruction(uint8_t opcode)
 {
+	switch (opcode)
+	{
+	//RLC
+	case 0x00: B = rotateLeftCircular(B); break;
+	case 0x01: C = rotateLeftCircular(C); break;
+	case 0x02: D = rotateLeftCircular(D); break;
+	case 0x03: E = rotateLeftCircular(E); break;
+	case 0x04: H = rotateLeftCircular(H); break;
+	case 0x05: L = rotateLeftCircular(L); break;
+	case 0x06: setM(rotateLeftCircular(getM())); break;
+	case 0x07: A = rotateLeftCircular(A); break;
+
+	//RRC
+	case 0x08: B = rotateRightCircular(B); break;
+	case 0x09: C = rotateRightCircular(C); break;
+	case 0x0a: D = rotateRightCircular(D); break;
+	case 0x0b: E = rotateRightCircular(E); break;
+	case 0x0c: H = rotateRightCircular(H); break;
+	case 0x0d: L = rotateRightCircular(L); break;
+	case 0x0e: setM(rotateRightCircular(getM())); break;
+	case 0x0f: A = rotateRightCircular(A); break;
+
+	//RL
+	case 0x10: B = rotateLeft(B); break;
+	case 0x11: C = rotateLeft(C); break;
+	case 0x12: D = rotateLeft(D); break;
+	case 0x13: E = rotateLeft(E); break;
+	case 0x14: H = rotateLeft(H); break;
+	case 0x15: L = rotateLeft(L); break;
+	case 0x16: setM(rotateLeft(getM())); break;
+	case 0x17: A = rotateLeft(A); break;
+
+	//RR
+	case 0x18: B = rotateRight(B); break;
+	case 0x19: C = rotateRight(C); break;
+	case 0x1a: D = rotateRight(D); break;
+	case 0x1b: E = rotateRight(E); break;
+	case 0x1c: H = rotateRight(H); break;
+	case 0x1d: L = rotateRight(L); break;
+	case 0x1e: setM(rotateRight(getM())); break;
+	case 0x1f: A = rotateRight(A); break;
+	
+	//SLA
+	case 0x20: B = shiftLeftArithmetic(B); break;
+	case 0x21: C = shiftLeftArithmetic(C); break;
+	case 0x22: D = shiftLeftArithmetic(D); break;
+	case 0x23: E = shiftLeftArithmetic(E); break;
+	case 0x24: H = shiftLeftArithmetic(H); break;
+	case 0x25: L = shiftLeftArithmetic(L); break;
+	case 0x26: setM(shiftLeftArithmetic(getM())); break;
+	case 0x27: A = shiftLeftArithmetic(A); break;
+
+	//SRA
+	case 0x28: B = shiftRightArithmetic(B); break;
+	case 0x29: C = shiftRightArithmetic(C); break;
+	case 0x2a: D = shiftRightArithmetic(D); break;
+	case 0x2b: E = shiftRightArithmetic(E); break;
+	case 0x2c: H = shiftRightArithmetic(H); break;
+	case 0x2d: L = shiftRightArithmetic(L); break;
+	case 0x2e: setM(shiftRightArithmetic(getM())); break;
+	case 0x2f: A = shiftRightArithmetic(A); break;
+
+	//SWAP
+	case 0x30: B = swap(B); break;
+	case 0x31: C = swap(C); break;
+	case 0x32: D = swap(D); break;
+	case 0x33: E = swap(E); break;
+	case 0x34: H = swap(H); break;
+	case 0x35: L = swap(L); break;
+	case 0x36: setM(swap(getM())); break;
+	case 0x37: A = swap(A); break;
+
+	//SRL
+	case 0x38: B = shiftRightLogical(B); break;
+	case 0x39: C = shiftRightLogical(C); break;
+	case 0x3a: D = shiftRightLogical(D); break;
+	case 0x3b: E = shiftRightLogical(E); break;
+	case 0x3c: H = shiftRightLogical(H); break;
+	case 0x3d: L = shiftRightLogical(L); break;
+	case 0x3e: setM(shiftRightLogical(getM())); break;
+	case 0x3f: A = shiftRightLogical(A); break;
+
+	//BIT 0
+	case 0x40: bitTest(0, B); break;
+	case 0x41: bitTest(0, C); break;
+	case 0x42: bitTest(0, D); break;
+	case 0x43: bitTest(0, E); break;
+	case 0x44: bitTest(0, H); break;
+	case 0x45: bitTest(0, L); break;
+	case 0x46: bitTest(0, getM()); break;
+	case 0x47: bitTest(0, A); break;
+
+	//BIT 1
+	case 0x48: bitTest(1, B); break;
+	case 0x49: bitTest(1, C); break;
+	case 0x4a: bitTest(1, D); break;
+	case 0x4b: bitTest(1, E); break;
+	case 0x4c: bitTest(1, H); break;
+	case 0x4d: bitTest(1, L); break;
+	case 0x4e: bitTest(1, getM()); break;
+	case 0x4f: bitTest(1, A); break;
+	
+	//BIT 2
+	case 0x50: bitTest(2, B); break;
+	case 0x51: bitTest(2, C); break;
+	case 0x52: bitTest(2, D); break;
+	case 0x53: bitTest(2, E); break;
+	case 0x54: bitTest(2, H); break;
+	case 0x55: bitTest(2, L); break;
+	case 0x56: bitTest(2, getM()); break;
+	case 0x57: bitTest(2, A); break;
+
+	//BIT 3
+	case 0x58: bitTest(3, B); break;
+	case 0x59: bitTest(3, C); break;
+	case 0x5a: bitTest(3, D); break;
+	case 0x5b: bitTest(3, E); break;
+	case 0x5c: bitTest(3, H); break;
+	case 0x5d: bitTest(3, L); break;
+	case 0x5e: bitTest(3, getM()); break;
+	case 0x5f: bitTest(3, A); break;
+
+	//BIT 4
+	case 0x60: bitTest(4, B); break;
+	case 0x61: bitTest(4, C); break;
+	case 0x62: bitTest(4, D); break;
+	case 0x63: bitTest(4, E); break;
+	case 0x64: bitTest(4, H); break;
+	case 0x65: bitTest(4, L); break;
+	case 0x66: bitTest(4, getM()); break;
+	case 0x67: bitTest(4, A); break;
+
+	//BIT 5
+	case 0x68: bitTest(5, B); break;
+	case 0x69: bitTest(5, C); break;
+	case 0x6a: bitTest(5, D); break;
+	case 0x6b: bitTest(5, E); break;
+	case 0x6c: bitTest(5, H); break;
+	case 0x6d: bitTest(5, L); break;
+	case 0x6e: bitTest(5, getM()); break;
+	case 0x6f: bitTest(5, A); break;
+
+	//BIT 6
+	case 0x70: bitTest(6, B); break;
+	case 0x71: bitTest(6, C); break;
+	case 0x72: bitTest(6, D); break;
+	case 0x73: bitTest(6, E); break;
+	case 0x74: bitTest(6, H); break;
+	case 0x75: bitTest(6, L); break;
+	case 0x76: bitTest(6, getM()); break;
+	case 0x77: bitTest(6, A); break;
+
+	//BIT 7
+	case 0x78: bitTest(7, B); break;
+	case 0x79: bitTest(7, C); break;
+	case 0x7a: bitTest(7, D); break;
+	case 0x7b: bitTest(7, E); break;
+	case 0x7c: bitTest(7, H); break;
+	case 0x7d: bitTest(7, L); break;
+	case 0x7e: bitTest(7, getM()); break;
+	case 0x7f: bitTest(7, A); break;
+
+	//RES 0
+	case 0x80: B = bitReset(0, B); break;
+	case 0x81: C = bitReset(0, C); break;
+	case 0x82: D = bitReset(0, D); break;
+	case 0x83: E = bitReset(0, E); break;
+	case 0x84: H = bitReset(0, H); break;
+	case 0x85: L = bitReset(0, L); break;
+	case 0x86: setM(bitReset(0, getM())); break;
+	case 0x87: A = bitReset(0, A); break;
+
+	//RES 1
+	case 0x88: B = bitReset(1, B); break;
+	case 0x89: C = bitReset(1, C); break;
+	case 0x8a: D = bitReset(1, D); break;
+	case 0x8b: E = bitReset(1, E); break;
+	case 0x8c: H = bitReset(1, H); break;
+	case 0x8d: L = bitReset(1, L); break;
+	case 0x8e: setM(bitReset(1, getM())); break;
+	case 0x8f: A = bitReset(1, A); break;
+	
+	//RES 2
+	case 0x90: B = bitReset(2, B); break;
+	case 0x91: C = bitReset(2, C); break;
+	case 0x92: D = bitReset(2, D); break;
+	case 0x93: E = bitReset(2, E); break;
+	case 0x94: H = bitReset(2, H); break;
+	case 0x95: L = bitReset(2, L); break;
+	case 0x96: setM(bitReset(2, getM())); break;
+	case 0x97: A = bitReset(2, A); break;
+
+	//RES 3
+	case 0x98: B = bitReset(3, B); break;
+	case 0x99: C = bitReset(3, C); break;
+	case 0x9a: D = bitReset(3, D); break;
+	case 0x9b: E = bitReset(3, E); break;
+	case 0x9c: H = bitReset(3, H); break;
+	case 0x9d: L = bitReset(3, L); break;
+	case 0x9e: setM(bitReset(3, getM())); break;
+	case 0x9f: A = bitReset(3, A); break;
+
+	//RES 4
+	case 0xa0: B = bitReset(4, B); break;
+	case 0xa1: C = bitReset(4, C); break;
+	case 0xa2: D = bitReset(4, D); break;
+	case 0xa3: E = bitReset(4, E); break;
+	case 0xa4: H = bitReset(4, H); break;
+	case 0xa5: L = bitReset(4, L); break;
+	case 0xa6: setM(bitReset(4, getM())); break;
+	case 0xa7: A = bitReset(4, A); break;
+
+	//RES 5
+	case 0xa8: B = bitReset(5, B); break;
+	case 0xa9: C = bitReset(5, C); break;
+	case 0xaa: D = bitReset(5, D); break;
+	case 0xab: E = bitReset(5, E); break;
+	case 0xac: H = bitReset(5, H); break;
+	case 0xad: L = bitReset(5, L); break;
+	case 0xae: setM(bitReset(5, getM())); break;
+	case 0xaf: A = bitReset(5, A); break;
+
+	//RES 6
+	case 0xb0: B = bitReset(6, B); break;
+	case 0xb1: C = bitReset(6, C); break;
+	case 0xb2: D = bitReset(6, D); break;
+	case 0xb3: E = bitReset(6, E); break;
+	case 0xb4: H = bitReset(6, H); break;
+	case 0xb5: L = bitReset(6, L); break;
+	case 0xb6: setM(bitReset(6, getM())); break;
+	case 0xb7: A = bitReset(6, A); break;
+
+	//RES 7
+	case 0xb8: B = bitReset(7, B); break;
+	case 0xb9: C = bitReset(7, C); break;
+	case 0xba: D = bitReset(7, D); break;
+	case 0xbb: E = bitReset(7, E); break;
+	case 0xbc: H = bitReset(7, H); break;
+	case 0xbd: L = bitReset(7, L); break;
+	case 0xbe: setM(bitReset(7, getM())); break;
+	case 0xbf: A = bitReset(7, A); break;
+
+	//SET 0
+	case 0xc0: B = bitSet(0, B); break;
+	case 0xc1: C = bitSet(0, C); break;
+	case 0xc2: D = bitSet(0, D); break;
+	case 0xc3: E = bitSet(0, E); break;
+	case 0xc4: H = bitSet(0, H); break;
+	case 0xc5: L = bitSet(0, L); break;
+	case 0xc6: setM(bitSet(0, getM())); break;
+	case 0xc7: A = bitSet(0, A); break;
+
+	//SET 1
+	case 0xc8: B = bitSet(1, B); break;
+	case 0xc9: C = bitSet(1, C); break;
+	case 0xca: D = bitSet(1, D); break;
+	case 0xcb: E = bitSet(1, E); break;
+	case 0xcc: H = bitSet(1, H); break;
+	case 0xcd: L = bitSet(1, L); break;
+	case 0xce: setM(bitSet(1, getM())); break;
+	case 0xcf: A = bitSet(1, A); break;
+	
+	//SET 2
+	case 0xd0: B = bitSet(2, B); break;
+	case 0xd1: C = bitSet(2, C); break;
+	case 0xd2: D = bitSet(2, D); break;
+	case 0xd3: E = bitSet(2, E); break;
+	case 0xd4: H = bitSet(2, H); break;
+	case 0xd5: L = bitSet(2, L); break;
+	case 0xd6: setM(bitSet(2, getM())); break;
+	case 0xd7: A = bitSet(2, A); break;
+
+	//SET 3
+	case 0xd8: B = bitSet(3, B); break;
+	case 0xd9: C = bitSet(3, C); break;
+	case 0xda: D = bitSet(3, D); break;
+	case 0xdb: E = bitSet(3, E); break;
+	case 0xdc: H = bitSet(3, H); break;
+	case 0xdd: L = bitSet(3, L); break;
+	case 0xde: setM(bitSet(3, getM())); break;
+	case 0xdf: A = bitSet(3, A); break;
+
+	//SET 4
+	case 0xe0: B = bitSet(4, B); break;
+	case 0xe1: C = bitSet(4, C); break;
+	case 0xe2: D = bitSet(4, D); break;
+	case 0xe3: E = bitSet(4, E); break;
+	case 0xe4: H = bitSet(4, H); break;
+	case 0xe5: L = bitSet(4, L); break;
+	case 0xe6: setM(bitSet(4, getM())); break;
+	case 0xe7: A = bitSet(4, A); break;
+
+	//SET 5
+	case 0xe8: B = bitSet(5, B); break;
+	case 0xe9: C = bitSet(5, C); break;
+	case 0xea: D = bitSet(5, D); break;
+	case 0xeb: E = bitSet(5, E); break;
+	case 0xec: H = bitSet(5, H); break;
+	case 0xed: L = bitSet(5, L); break;
+	case 0xee: setM(bitSet(5, getM())); break;
+	case 0xef: A = bitSet(5, A); break;
+
+	//SET 6
+	case 0xf0: B = bitSet(6, B); break;
+	case 0xf1: C = bitSet(6, C); break;
+	case 0xf2: D = bitSet(6, D); break;
+	case 0xf3: E = bitSet(6, E); break;
+	case 0xf4: H = bitSet(6, H); break;
+	case 0xf5: L = bitSet(6, L); break;
+	case 0xf6: setM(bitSet(6, getM())); break;
+	case 0xf7: A = bitSet(6, A); break;
+
+	//SET 7
+	case 0xf8: B = bitSet(7, B); break;
+	case 0xf9: C = bitSet(7, C); break;
+	case 0xfa: D = bitSet(7, D); break;
+	case 0xfb: E = bitSet(7, E); break;
+	case 0xfc: H = bitSet(7, H); break;
+	case 0xfd: L = bitSet(7, L); break;
+	case 0xfe: setM(bitSet(7, getM())); break;
+	case 0xff: A = bitSet(7, A); break;
+
+	default: break;
+	}
 	return;
 }
 
