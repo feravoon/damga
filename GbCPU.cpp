@@ -28,8 +28,8 @@ void GbCPU::setFlags(uint8_t value)
 {
 	Z = (value & 0x80) == 0x80;
 	N = (value & 0x40) == 0x40;
-	HC = (value & 0x10) == 0x20;
-	CY = (value & 0x02) == 0x10;
+	HC = (value & 0x20) == 0x20;
+	CY = (value & 0x10) == 0x10;
 }
 
 
@@ -213,7 +213,7 @@ uint8_t GbCPU::shiftRightLogical(uint8_t value)
 
 void GbCPU::bitTest(uint8_t bitNumber, uint8_t value)
 {
-	Z = ((value >> bitNumber) & 0x01 == 0);
+	Z = (((value >> bitNumber) & 0x01) == 0);
 	N = 0;
 	HC = 1;
 }
@@ -290,14 +290,17 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0xcb: processExtendedInstruction(opcode1); break;	
 	case 0x00: // NOP
 	case 0x10:
-	case 0x20:
-	case 0x30:
 	case 0x08:
-	case 0x18:
-	case 0x28:
-	case 0x38:
-		// Do nothing
+
+
 		break;
+
+	case 0x18: PC += (int8_t)opcode1; break;
+	case 0x28: if (Z) { PC += (int8_t)opcode1; }  break; //JR Z
+	case 0x38: if (CY) { PC += (int8_t)opcode1; }  break; //JR C
+
+	case 0x20: if (!Z) { PC += (int8_t)opcode1; }  break; //JR NZ
+	case 0x30: if (!CY) { PC += (int8_t)opcode1; }  break; //JR NC
 
 	case 0x07: // RLC
 	{
@@ -351,8 +354,8 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0x02: memory[getBC()] = A; break; // STAX B
 	case 0x12: memory[getDE()] = A; break; // STAX D
 
-	case 0x22: memory[(opcode2 << 8) | opcode1] = L; memory[((opcode2 << 8) | opcode1) + 1] = H; break; // SHLD
-	case 0x32: memory[(opcode2 << 8) | opcode1] = A; break; // STA
+	case 0x22: setM(A); setHL(getHL()+1); break; // LD [HL+], A
+	case 0x32: setM(A); setHL(getHL()-1); break; // LD [HL-], A
 
 	case 0x2f: A = ~A; break; // CMA
 
@@ -363,8 +366,8 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0x0a: A = memory[getBC()]; break; // LDAX B
 	case 0x1a: A = memory[getDE()]; break; // LDAX D
 
-	case 0x2a: L = memory[(opcode2 << 8) | opcode1]; H = memory[((opcode2 << 8) | opcode1) + 1];  break; // LHLD
-	case 0x3a: A = memory[(opcode2 << 8) | opcode1]; break; // LDA
+	case 0x2a: A = getM(); setHL(getHL()+1); break; // LD A, [HL+]
+	case 0x3a: A = getM(); setHL(getHL()-1); break; // LD A, [HL-]
 
 	// DAD
 	case 0x09: { int res = getHL() + getBC(); setHL(res); CY = (res & 0xffff0000) != 0; }; break; // DAD B
