@@ -52,18 +52,13 @@ Renderer::Renderer(float scale)
     }
 
     // creates a window
-    this->win = SDL_CreateWindow("Space Invaders | Press C for Coin, 1 for Starting a Game, F for Fire", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 224*this->scale, 256*this->scale, SDL_WINDOW_ALLOW_HIGHDPI);
+    this->win = SDL_CreateWindow("DaMGa", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160*this->scale, 144*this->scale, SDL_WINDOW_ALLOW_HIGHDPI);
  
     // triggers the program that controls your graphics hardware and sets flags
     Uint32 render_flags = SDL_RENDERER_ACCELERATED;
  
     // creates a renderer to render our images
     this->rend = SDL_CreateRenderer(win, -1, render_flags);
-
-	SDL_Surface* surfBG = IMG_Load("bg.png");
-	this->texBG = SDL_CreateTextureFromSurface(this->rend, surfBG);
-	SDL_SetTextureBlendMode(this->texBG,SDL_BLENDMODE_BLEND);
-	SDL_FreeSurface(surfBG);
 
     SDL_ShowCursor(SDL_DISABLE);
 }
@@ -81,41 +76,17 @@ void black_to_transparent(SDL_Surface *surface, int x, int y)
 		*target_pixel = 0x00000000;	
 }
 
-void Renderer::render(Memory cpuMem)
+void Renderer::render(frameBuffer fb)
 {
 	// Copy the image from emulated memory
-    std::copy(std::begin(cpuMem.byteArray) + 0x2400, std::begin(cpuMem.byteArray) + 0x2400 + 224 * 256 / 8, std::begin(this->imByteArray));
-    
-    int length = sizeof(imByteArray) / sizeof(*imByteArray);
+    std::copy(std::begin(fb.byteArray), std::begin(fb.byteArray) + 160 * 144, std::begin(this->imByteArray));
 
-    for (int i = 0; i < length; i++)
-	   imByteArray[i] = ~bitReverse(imByteArray[i]);
-
-    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(this->imByteArray,256,224,1,256/8,SDL_PIXELFORMAT_INDEX1MSB);
-
-	// Convert surface pixel format to RGBA32
-	surface = SDL_ConvertSurfaceFormat(surface,SDL_PIXELFORMAT_RGBA32,0);
+    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(this->imByteArray,160,144,8,160/8,SDL_PIXELFORMAT_INDEX1MSB);
 	
-	// Color the pixels according to the classic arcade monitor overlays
-	for(int i=0; i<256; i++)
-	{
-		for(int j=0; j<224; j++)
-		{
-			if(i>=192 & i<224)
-				pixel_and(surface,i,j,(Uint32)0xff0000ff); // RED
-
-			if(i>=16 & i<72)
-				pixel_and(surface,i,j,(Uint32)0xff00ff00); // UPPER-GREEN
-
-			if(i>=0 & i<16 & j>=24 & j<136)
-				pixel_and(surface,i,j,(Uint32)0xff00ff00); // LOWER-GREEN	
-			
-			black_to_transparent(surface,i,j); // Make black pixels transparent
-		}
-	}
+	// Convert surface pixel format to RGBA32
+	//surface = SDL_ConvertSurfaceFormat(surface,SDL_PIXELFORMAT_RGBA32,0);
 	
     this->tex = SDL_CreateTextureFromSurface(rend, surface);
-	SDL_SetTextureBlendMode(this->tex,SDL_BLENDMODE_BLEND);
     SDL_FreeSurface(surface);
 
     // set the background color
@@ -124,21 +95,13 @@ void Renderer::render(Memory cpuMem)
     // clears the screen
     SDL_RenderClear(rend);
 
-	// Background texture coordinates
-    dest.w = 224*2*this->scale;
-    dest.h = 256*2*this->scale;
+    // Game frame texture coordinates
+    dest.w = 160*2*this->scale;
+    dest.h = 144*2*this->scale;
     dest.x = 0*this->scale;
     dest.y = 0*this->scale;
-
-	SDL_RenderCopy(rend,this->texBG,NULL,&dest);
-
-    // Game frame texture coordinates
-    dest.w = 256*2*this->scale;
-    dest.h = 224*2*this->scale;
-    dest.x = -32*this->scale;
-    dest.y = 32*this->scale;
     
-    SDL_RenderCopyEx(rend,tex,NULL,&dest,270,NULL,SDL_FLIP_NONE);
+	SDL_RenderCopy(rend,this->tex,NULL,&dest);
 
     SDL_DestroyTexture(this->tex);
     SDL_RenderPresent(rend);

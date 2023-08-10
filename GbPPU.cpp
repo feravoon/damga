@@ -113,6 +113,7 @@ void GbPPU::dmaTransfer(uint8_t baseAddr)
 
 void GbPPU::drawLine()
 {
+    /*
     uint8_t LCDC = memory->read(0xff40); // LCD Control Register
     uint16_t BG_tilemap_addr, BG_Win_tiledata_addr;
     switch (LCDC>>3 & 0x01)
@@ -129,7 +130,7 @@ void GbPPU::drawLine()
 
     uint8_t SCX = memory->read(0xff42);
     uint8_t SCY = memory->read(0xff43);
-
+    */
     for(int i=0; i<160; i++)
     {
         //uint8_t tileRow = memory->read(BG_tilemap_addr + lineNumber*80 + i)
