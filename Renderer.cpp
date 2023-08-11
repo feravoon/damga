@@ -55,7 +55,7 @@ Renderer::Renderer(float scale)
     this->win = SDL_CreateWindow("DaMGa", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 160*this->scale, 144*this->scale, SDL_WINDOW_ALLOW_HIGHDPI);
  
     // triggers the program that controls your graphics hardware and sets flags
-    Uint32 render_flags = SDL_RENDERER_ACCELERATED;
+    Uint32 render_flags = SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC;
  
     // creates a renderer to render our images
     this->rend = SDL_CreateRenderer(win, -1, render_flags);
@@ -81,8 +81,16 @@ void Renderer::render(frameBuffer fb)
 	// Copy the image from emulated memory
     std::copy(std::begin(fb.byteArray), std::begin(fb.byteArray) + 160 * 144, std::begin(this->imByteArray));
 
-    SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(this->imByteArray,160,144,8,160/8,SDL_PIXELFORMAT_INDEX1MSB);
-	
+	SDL_Color colors[256];
+	int i;
+
+	for(i = 0; i < 256; i++)
+	{
+		colors[i].r = colors[i].g = colors[i].b = i;
+	}
+	SDL_Surface* surface = SDL_CreateRGBSurfaceWithFormatFrom(this->imByteArray,160,144,8,160,SDL_PIXELFORMAT_INDEX8);
+	SDL_SetPaletteColors(surface->format->palette, colors, 0, 256);
+
 	// Convert surface pixel format to RGBA32
 	//surface = SDL_ConvertSurfaceFormat(surface,SDL_PIXELFORMAT_RGBA32,0);
 	

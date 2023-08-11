@@ -9,7 +9,7 @@ private:
     int cyclesInState;  
     uint8_t lineNumber, horPixelNumber;
     void setLY();
-    void setStatRegister();
+    void setStatRegister(uint8_t interruptSources);
     void dmaTransfer(uint8_t baseAddr);
     OAM oam;
     void drawLine();

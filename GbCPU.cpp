@@ -32,8 +32,6 @@ void GbCPU::setFlags(uint8_t value)
 	CY = (value & 0x10) == 0x10;
 }
 
-
-
 void GbCPU::updateFlags(GbCPU::FlagState stZ, GbCPU::FlagState stN, GbCPU::FlagState stHC, GbCPU::FlagState stCY, u_int16_t res, uint8_t operand1, uint8_t operand2)
 {
 	switch (stZ)
@@ -151,8 +149,8 @@ void GbCPU::generateInterrupt(int intID)
 	memory[SP - 1] = (ret >> 8) & 0xff;
 	memory[SP - 2] = ret & 0xff;
 	SP -= 2;
-	PC = (uint16_t)(8 * intID);
-	IE = false;
+	PC = (uint16_t)(0x40 + 8 * intID);
+	IME = false;
 }
 
 uint8_t GbCPU::rotateLeft(uint8_t value)
@@ -251,7 +249,7 @@ GbCPU::GbCPU()
 	HC = false;
 	CY = false;
 	
-	IE = true;
+	IME = true;
 
 	memory = Memory();
 	IO = IOcontroller();
@@ -686,6 +684,13 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 		SP += 2;
 		break;
 
+	case 0xd9: // RETI
+		IME = true;
+		PC = (memory[SP] | (memory[SP + 1] << 8));
+		SP += 2;
+		printf("Returned from Interrupt!\n");
+		break;
+
 	case 0xc8: // RZ
 		if (Z)
 		{
@@ -849,8 +854,8 @@ int GbCPU::processInstruction() // Main method for processing an instruction (so
 	case 0xd3: IO.O[opcode1] = A; IO.newOutput[opcode1] = true; break; // OUT
 	case 0xdb: A = IO.I[opcode1]; break; // IN
 
-	case 0xf3: IE = false; break; // DI
-	case 0xfb: IE = true; break; // EI
+	case 0xf3: IME = false; break; // DI
+	case 0xfb: IME = true; break; // EI
 
 	case 0xe3: // XTHL 
 	{

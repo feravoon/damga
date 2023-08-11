@@ -45,7 +45,7 @@ private:
 public:
 	bool printOutput;
 	uint16_t PC;
-	bool IE;
+	bool IME;
 	Memory memory;
 	IOcontroller IO;
     
